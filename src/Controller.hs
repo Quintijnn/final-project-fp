@@ -12,20 +12,24 @@ import View
 step :: Float -> GameState -> IO GameState
 step secs gstate@Menu {selectedOption = opt} =
   case opt of
-    1 -> return Running {elapsedTime = 0, player = initialPlayer, enemies = [], bullets = [], rocks = [], score = 0}
+    1 -> return Running {elapsedTime = 0, player = initialPlayer, enemies = [], bullets = [], rocks = [], score = 0, keysPressed = []}
     2 -> error "Exiting game."
     _ -> return gstate
-step secs gstate@Running {elapsedTime = et} =
-  return gstate {elapsedTime = et + secs}
+step secs gstate@Running {elapsedTime = et, keysPressed = ks} =
+  let movedState = moveWithKeys ks gstate 
+  in return movedState {elapsedTime = et + secs}
 step secs gstate@Paused {elapsedTime = et} =
   return gstate {elapsedTime = et + secs}
 
 -- Handle user input
 handleInput :: Event -> GameState -> IO GameState
 -- Runnning
-handleInput (EventKey (SpecialKey KeyUp) Down _ _) state@Running {} = return $ movePlayer 10 state
-handleInput (EventKey (SpecialKey KeyDown) Down _ _) state@Running {} = return $ movePlayer (-10) state
-handleInput (EventKey (SpecialKey KeySpace) Down _ _) state@Running {player = pl} = return $ fireBullet (position pl) (0, 1) 300 state
+handleInput (EventKey (SpecialKey key) Down _ _) state@Running {keysPressed = ks}
+  | key `elem` [KeyUp, KeyDown] = return state {keysPressed = key : ks}
+handleInput (EventKey (SpecialKey key) Up _ _) state@Running {keysPressed = ks}
+  | key `elem` [KeyUp, KeyDown] = return state {keysPressed = filter (/= key) ks}
+
+handleInput (EventKey (SpecialKey KeySpace) Down _ _) state@Running {player = pl, bullets = bulls} = return $ fireBullet (position pl) (0, 1) 300 state bulls
 handleInput (EventKey (Char 'p') Down _ _) state@Running{} = return $ Paused {elapsedTime = 0, prevState = state}
 -- Paused
 handleInput (EventKey (Char 'p') Down _ _) state@Paused {} = return $ prevState state
@@ -44,4 +48,18 @@ movePlayer ydelta gstate@Running {player = pl} =
     (x, y) = position pl
     newY = max (-290) (min 290 (y + ydelta))
 
-fireBullet = undefined
+-- Move the player based on currently pressed keys
+moveWithKeys :: [SpecialKey] -> GameState -> GameState
+moveWithKeys ks gstate
+  | KeyUp `elem` ks    = movePlayer 5 gstate
+  | KeyDown `elem` ks  = movePlayer (-5) gstate
+  | otherwise           = gstate
+
+fireBullet :: (Float, Float) -> (Float, Float) -> Int -> GameState -> [Bullet] -> GameState
+fireBullet (px, py) (dx, dy) speed gstate bulls =
+  gstate {bullets = newBullet : bulls}
+  where 
+    newBullet = Bullet {bulletPos = (px + 5, py), bulletSpeed = speed}
+
+moveBullets :: Float -> [Bullet] -> [Bullet]
+moveBullets secs bulls = undefined

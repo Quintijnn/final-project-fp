@@ -28,7 +28,7 @@ drawState Running{player = pl, enemies = enems, bullets = bulls, rocks = rks, sc
     enemyPictures = map drawEnemy enems
     scoreText = drawScore sc
 drawState Paused{} = 
-  return $ drawPaused
+  return drawPaused
 drawState GameOver{score = sc} = 
   return $ drawGameOver sc
 

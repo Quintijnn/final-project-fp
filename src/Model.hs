@@ -2,6 +2,9 @@
 --   which represent the state of the game
 module Model where
 
+import Graphics.Gloss.Interface.IO.Game
+
+
 data GameState
   = Running
       { elapsedTime :: Float,
@@ -9,7 +12,8 @@ data GameState
         enemies :: [Enemy],
         bullets :: [Bullet],
         rocks :: [Rock],
-        score :: Int
+        score :: Int,
+        keysPressed :: [SpecialKey]
       }
   | Paused
       { elapsedTime :: Float,
