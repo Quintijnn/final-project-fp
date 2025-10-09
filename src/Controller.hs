@@ -15,9 +15,10 @@ step secs gstate@Menu {selectedOption = opt} =
     1 -> return Running {elapsedTime = 0, player = initialPlayer, enemies = [], bullets = [], rocks = [], score = 0, keysPressed = []}
     2 -> error "Exiting game."
     _ -> return gstate
-step secs gstate@Running {elapsedTime = et, keysPressed = ks} =
-  let movedState = moveWithKeys ks gstate 
-  in return movedState {elapsedTime = et + secs}
+step secs gstate@Running {elapsedTime = et, bullets = bulls, keysPressed = ks} =
+  let movedPlayerState = moveWithKeys ks gstate 
+      movedBulletsState = moveBullets secs bulls movedPlayerState
+  in return movedBulletsState {elapsedTime = et + secs}
 step secs gstate@Paused {elapsedTime = et} =
   return gstate {elapsedTime = et + secs}
 
@@ -55,11 +56,15 @@ moveWithKeys ks gstate
   | KeyDown `elem` ks  = movePlayer (-5) gstate
   | otherwise           = gstate
 
-fireBullet :: (Float, Float) -> (Float, Float) -> Int -> GameState -> [Bullet] -> GameState
+fireBullet :: (Float, Float) -> (Float, Float) -> Float -> GameState -> [Bullet] -> GameState
 fireBullet (px, py) (dx, dy) speed gstate bulls =
   gstate {bullets = newBullet : bulls}
   where 
     newBullet = Bullet {bulletPos = (px + 5, py), bulletSpeed = speed}
 
-moveBullets :: Float -> [Bullet] -> [Bullet]
-moveBullets secs bulls = undefined
+moveBullets :: Float -> [Bullet] -> GameState -> GameState
+moveBullets secs bulls gstate@Running{bullets = newBulls} = gstate {bullets = newBullets}
+  where
+    newBullets = filter isOnScreen $ map moveBullet bulls
+    moveBullet (Bullet (bx, by) speed) = Bullet (bx + speed * secs, by) speed
+    isOnScreen (Bullet (bx, by) _) = bx <= 400 || bx >= -400 || by <= 300 || by >= -300

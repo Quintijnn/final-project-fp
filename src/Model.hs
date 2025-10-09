@@ -4,7 +4,6 @@ module Model where
 
 import Graphics.Gloss.Interface.IO.Game
 
-
 data GameState
   = Running
       { elapsedTime :: Float,
@@ -44,7 +43,7 @@ initialPlayer = Player {position = (-500, 0), health = 1}
 
 data Bullet = Bullet
   { bulletPos :: (Float, Float),
-    bulletSpeed :: Int
+    bulletSpeed :: Float
     --, bulletSprite :: Sprite
   }
 
