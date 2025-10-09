@@ -4,42 +4,52 @@ module Model where
 
 data GameState
   = Running
-      { player :: Player,
+      { elapsedTime :: Float,
+        player :: Player,
         enemies :: [Enemy],
         bullets :: [Bullet],
         rocks :: [Rock],
         score :: Int
       }
   | Paused
-      { prevState :: GameState
+      { elapsedTime :: Float,
+        prevState :: GameState
       }
   | GameOver
-      { name :: String,
+      { elapsedTime :: Float,
+        name :: String,
         score :: Int,
         highScores :: [(String, Int)]
       }
   | Menu
-      { selectedOption :: Int
+      { elapsedTime :: Float,
+        selectedOption :: Int
       }
+
+initialState :: GameState
+initialState = Menu {elapsedTime = 0, selectedOption = 0}
 
 data Player = Player
   { position :: (Float, Float),
-    health :: Int,
-    playerSprite :: Sprite
+    health :: Int
+    -- , playerSprite :: Sprite
   }
+
+initialPlayer :: Player
+initialPlayer = Player {position = (-500, 0), health = 1}
 
 data Bullet = Bullet
   { bulletPos :: (Float, Float),
-    bulletSpeed :: Int,
-    bulletSprite :: Sprite
+    bulletSpeed :: Int
+    --, bulletSprite :: Sprite
   }
 
 data Enemy = Enemy
   { enemyPos :: (Float, Float),
     enemyDir :: (Float, Float),
     shootInterval :: Float,
-    enemyType :: EnemyType,
-    enemySprite :: Sprite
+    enemyType :: EnemyType
+    --, enemySprite :: Sprite
   }
 
 data EnemyType = EnemyStandard | EnemyShooter
@@ -48,8 +58,8 @@ data Rock = Rock
   { rockSize :: Int,
     rockPos :: (Float, Float),
     flySpeed :: Int,
-    rotationSpeed :: Int,
-    rockSprite :: Sprite
+    rotationSpeed :: Int
+    --, rockSprite :: Sprite
   }
 
 data Sprite = Sprite
@@ -57,3 +67,6 @@ data Sprite = Sprite
     width :: Int,
     height :: Int
   }
+
+initialPlayerSprite :: Sprite
+initialPlayerSprite = Sprite {image = "assets/player.png", width = 50, height = 50}
