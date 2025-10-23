@@ -13,11 +13,11 @@ import System.Exit (exitSuccess)
 step :: Float -> GameState -> IO GameState
 step secs gstate@Menu {selectedOption = opt} =
   case opt of
-    1 -> return Running {elapsedTime = 0, player = initialPlayer, enemies = enemiesPhase1, bullets = [], rocks = [], score = 0, keysPressed = []}
+    1 -> return startGameState
     2 -> exitSuccess
     _ -> return gstate
-step secs gstate@Running {elapsedTime = et, player = pl, enemies = enems, bullets = bulls, score = sc, keysPressed = ks} =
-  let movedPlayerState = moveWithKeys ks gstate 
+step secs gstate@Running {elapsedTime = et} =
+  let movedPlayerState = moveWithKeys secs gstate 
       movedBulletsState = moveBullets secs movedPlayerState
       movedEnemiesState = moveEnemies secs movedBulletsState
       checkEnemyCollisionsState = checkEnemyCollisions secs movedEnemiesState
@@ -37,7 +37,7 @@ handleInput (EventKey (SpecialKey key) Down _ _) state@Running {keysPressed = ks
 handleInput (EventKey (SpecialKey key) Up _ _) state@Running {keysPressed = ks}
   | key `elem` [KeyUp, KeyDown] = return state {keysPressed = filter (/= key) ks}
 
-handleInput (EventKey (SpecialKey KeySpace) Down _ _) state@Running {player = pl, bullets = bulls} = return $ fireBullet pl (0, 1) 300 state bulls
+handleInput (EventKey (SpecialKey KeySpace) Down _ _) state@Running {player = pl, bullets = bulls} = return $ fireBullet pl (0, 1) 500 state bulls
 handleInput (EventKey (Char 'p') Down _ _) state@Running{} = return $ Paused {elapsedTime = 0, prevState = state}
 -- Paused
 handleInput (EventKey (Char 'p') Down _ _) state@Paused {} = return $ prevState state
@@ -52,19 +52,19 @@ handleInput (EventKey (Char 'q') Down _ _) state@GameOver {} = return $ Menu {el
 handleInput _ state = return state
 
 -- Move the player up or down 
-movePlayer :: Float -> GameState -> GameState
-movePlayer ydelta gstate@Running {player = pl} =
+movePlayer :: Float -> Float -> GameState -> GameState
+movePlayer secs ydelta gstate@Running {player = pl} =
   gstate {player = pl {position = (x, newY)}}
    where
     (x, y) = position pl
-    newY = max (-290) (min 290 (y + ydelta))
+    newY = max (-290) (min 290 (y + ydelta * secs))
 
 -- Move the player based on currently pressed keys
-moveWithKeys :: [SpecialKey] -> GameState -> GameState
-moveWithKeys ks gstate
+moveWithKeys :: Float -> GameState -> GameState
+moveWithKeys secs gstate@Running{keysPressed = ks}
   | KeyUp `elem` ks && KeyDown `elem` ks = gstate
-  | KeyUp `elem` ks     = movePlayer 5 gstate
-  | KeyDown `elem` ks   = movePlayer (-5) gstate
+  | KeyUp `elem` ks     = movePlayer secs 300 gstate
+  | KeyDown `elem` ks   = movePlayer secs (-300) gstate
   | otherwise           = gstate
 
 fireBullet :: Player -> (Float, Float) -> Float -> GameState -> [Bullet] -> GameState
@@ -76,10 +76,9 @@ fireBullet player@Player{position = (px, py), ammo = amm} (dx, dy) speed gstate 
 
 -- Move the bullets and drop off-screen ones
 moveBullets :: Float -> GameState -> GameState
-moveBullets secs gstate@Running{player = pl, bullets = bulls} = gstate {player = newPl, bullets = newBullets}
+moveBullets secs gstate@Running{bullets = bulls} = gstate {bullets = newBullets}
   where
     newBullets = filter isOnScreen $ map moveBullet bulls
-    newPl = pl {ammo = ammo pl + length bulls - length newBullets} 
     moveBullet (Bullet (bx, by) speed) = Bullet (bx + speed * secs, by) speed
     -- on-screen when x is between -400 and 400 AND y between -300 and 300
     isOnScreen (Bullet (bx, by) _) = bx >= (-500) && bx <= 600 && by >= (-300) && by <= 300 
@@ -88,7 +87,7 @@ moveBullets _ gstate = gstate
 moveEnemies :: Float -> GameState -> GameState
 moveEnemies secs gstate@Running{enemies = enems} = gstate {enemies = newEnems}
   where 
-    newEnems = map (\e -> moveEnemy e secs) enems
+    newEnems = map (`moveEnemy` secs) enems
 
 moveEnemy :: Enemy -> Float -> Enemy
 moveEnemy enem@Enemy{enemyPos = (oldX, oldY), enemyDir = (oldDirX, oldDirY)} secs = enem {enemyPos = (newX, newY), enemyDir = (dirX, dirY)}
@@ -129,9 +128,12 @@ checkPlayerCollisions secs gstate@Running {player = pl, enemies = enems, score =
       in distance < 25 + 20
 
 simpleReload :: Float -> GameState -> GameState
-simpleReload secs gstate@Running{player = pl, elapsedTime = et} =
-  -- reload every 2 seconds
-  if floor (et + secs) `mod` 2 == 0
-     then gstate { player = pl { ammo = min (ammo pl + 1) 10 } }
-     else gstate
+simpleReload secs gstate@Running { player = pl@Player { ammo = amm, reloadTimer = rt } }
+  | amm >= 10 = gstate { player = pl { reloadTimer = 0 } }  -- full ammo, reset timer
+  | rt + secs >= 1.5 =
+      -- reload 1 bullet
+      gstate { player = pl { ammo = min 10 (amm + 1), reloadTimer = (rt + secs) - 1.5 } }
+  | otherwise =
+      gstate { player = pl { reloadTimer = rt + secs } }
 simpleReload _ gstate = gstate
+

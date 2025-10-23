@@ -32,15 +32,19 @@ data GameState
 initialState :: GameState
 initialState = Menu {elapsedTime = 0, selectedOption = 0}
 
+startGameState :: GameState
+startGameState = Running {elapsedTime = 0, player = initialPlayer, enemies = enemiesPhase1, bullets = [], rocks = [], score = 0, keysPressed = []}
+
 data Player = Player
   { position :: (Float, Float),
     health :: Int,
-    ammo :: Int
+    ammo :: Int,
+    reloadTimer :: Float
     -- , playerSprite :: Sprite
   }
 
 initialPlayer :: Player
-initialPlayer = Player {position = (-500, 0), health = 1, ammo = 10}
+initialPlayer = Player {position = (-500, 0), health = 1, ammo = 10, reloadTimer = 0}
 
 data Bullet = Bullet
   { bulletPos :: (Float, Float),
