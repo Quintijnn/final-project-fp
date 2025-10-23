@@ -21,12 +21,13 @@ drawState Menu{} =
                     ]
 
 drawState Running{player = pl, enemies = enems, bullets = bulls, rocks = rks, score = sc} =
-  return $ Pictures (playerPicture : bulletPictures ++ enemyPictures ++ [scoreText])
+  return $ Pictures (playerPicture : bulletPictures ++ enemyPictures ++ [scoreText] ++ [ammoText])
   where 
     playerPicture = drawPlayer pl
     bulletPictures = map drawBullet bulls
     enemyPictures = map drawEnemy enems
     scoreText = drawScore sc
+    ammoText = drawAmmo (ammo pl)
 drawState Paused{} = 
   return drawPaused
 drawState GameOver{score = sc} = 
@@ -34,17 +35,17 @@ drawState GameOver{score = sc} =
 
 drawPlayer :: Player -> Picture
 drawPlayer Player{position = (x, y)} =
-  translate x y (color white (circleSolid 10))
+  translate x y (color white (circleSolid 25))
 
 drawBullet :: Bullet -> Picture
 drawBullet Bullet{bulletPos = (x, y)} =
-  translate x y (color red (circleSolid 5)) 
+  translate x y (color red (circleSolid 12)) 
 
 drawEnemy :: Enemy -> Picture
 drawEnemy Enemy{enemyPos = (x, y), enemyType = et} =
   translate x y (color blue (case et of
-                                EnemyStandard -> circleSolid 8
-                                EnemyShooter  -> rectangleSolid 12 12))
+                                EnemyStandard -> circleSolid 20
+                                EnemyShooter  -> rectangleSolid 30 30))
 
 drawRock :: Rock -> Picture
 drawRock Rock{rockPos = (x, y), rockSize = size} =
@@ -65,3 +66,6 @@ drawGameOver sc = Pictures [ translate (-100) 0 $ scale 0.3 0.3 $ color red $ te
                           , translate (-150) (-40) $ scale 0.15 0.15 $ color white $ text "Press 'r' to restart"
                           , translate (-150) (-120) $ scale 0.15 0.15 $ color white $ text "Press 'q' to quit to menu"
                           ]
+
+drawAmmo :: Int -> Picture
+drawAmmo amm = translate (-600) 200 $ scale 0.13 0.13 $ color white $ text ("Ammo: " ++ show amm)

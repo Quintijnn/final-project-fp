@@ -7,10 +7,10 @@ import View
 import Graphics.Gloss.Interface.IO.Game
 
 main :: IO ()
-main = playIO (InWindow "Shoot 'm Up" (1200, 600) (0, 0)) -- Or FullScreen
+main = playIO (InWindow "Shoot 'm Up" (1200, 600) (300, 200)) -- Or FullScreen
               black            -- Background color
               30               -- Frames per second
               initialState     -- Initial state
-              drawState             -- View function
-              handleInput            -- Event function
+              drawState        -- View function
+              handleInput      -- Event function
               step             -- Step function
