@@ -5,15 +5,6 @@ module View where
 import Graphics.Gloss
 import Model
 
--- view :: GameState -> IO Picture
--- view = return . drawState
-
--- viewPure :: GameState -> Picture
--- viewPure gstate = case infoToShow gstate of
---   ShowNothing   -> blank
---   ShowANumber n -> color green (text (show n))
---   ShowAChar   c -> color green (text [c])
-
 drawState :: GameState -> IO Picture
 drawState Menu{} = 
   return $ Pictures [ color white $ translate (-100) 0 $ scale 0.3 0.3 $ text "Start - Press 1"
@@ -32,6 +23,8 @@ drawState Paused{} =
   return drawPaused
 drawState GameOver{score = sc} = 
   return $ drawGameOver sc
+drawState GameVictory{score = sc} = 
+  return $ drawGameVictory sc
 
 drawPlayer :: Player -> Picture
 drawPlayer Player{position = (x, y)} =
@@ -42,10 +35,11 @@ drawBullet Bullet{bulletPos = (x, y)} =
   translate x y (color red (circleSolid 12)) 
 
 drawEnemy :: Enemy -> Picture
-drawEnemy Enemy{enemyPos = (x, y), enemyType = et} =
-  translate x y (color blue (case et of
-                                EnemyStandard -> circleSolid 20
-                                EnemyShooter  -> rectangleSolid 30 30))
+drawEnemy (Runner {enemyPos = (x, y)}) =
+  translate x y (color blue (circleSolid 20))
+drawEnemy (Shooter {enemyPos = (x, y)}) =
+  translate x y (color red (rectangleSolid 30 30))
+
 
 drawRock :: Rock -> Picture
 drawRock Rock{rockPos = (x, y), rockSize = size} =
@@ -66,6 +60,13 @@ drawGameOver sc = Pictures [ translate (-100) 0 $ scale 0.3 0.3 $ color red $ te
                           , translate (-150) (-40) $ scale 0.15 0.15 $ color white $ text "Press 'r' to restart"
                           , translate (-150) (-120) $ scale 0.15 0.15 $ color white $ text "Press 'q' to quit to menu"
                           ]
+              
+drawGameVictory :: Int -> Picture
+drawGameVictory sc = Pictures [ translate (-120) 0 $ scale 0.3 0.3 $ color green $ text "You Win!"
+                             , translate (-150) (-80) $ scale 0.15 0.15 $ color white $ text ("Your Score: " ++ show sc)
+                             , translate (-150) (-40) $ scale 0.15 0.15 $ color white $ text "Press 'r' to restart"
+                             , translate (-150) (-120) $ scale 0.15 0.15 $ color white $ text "Press 'q' to quit to menu"
+                             ]
 
 drawAmmo :: Int -> Picture
 drawAmmo amm = translate (-600) 200 $ scale 0.13 0.13 $ color white $ text ("Ammo: " ++ show amm)
