@@ -254,14 +254,14 @@ spawnEnemiesAtRandomPositions n Shooter{} s =
   mapM
     ( \_ -> do
         pos <- getRandomPosition
-        return Shooter {enemyPos = pos, enemyDir = (-1, 2), shootInterval = 3, enemySprite = s}
+        return Shooter {enemyPos = pos, enemyDir = (-1, 2), shootInterval = 3, enemySprite = s, enemyStatus = Alive}
     )
     [1 .. n]
 spawnEnemiesAtRandomPositions n Runner{} s =
   mapM
     ( \_ -> do
         pos <- getRandomPosition
-        return Runner {enemyPos = pos, enemyDir = (-1, 2), enemySprite = s}
+        return Runner {enemyPos = pos, enemyDir = (-1, 2), enemySprite = s, enemyStatus = Alive}
     )
     [1 .. n]
 
