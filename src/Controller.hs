@@ -9,6 +9,8 @@ import System.Random
 import Text.ParserCombinators.ReadP (get)
 import View
 import Text.Read (readMaybe)
+import Control.Exception (try, IOException)
+import Data.Maybe (fromMaybe)
 
 -- | Handle one iteration of the game
 step :: Float -> GameState -> IO GameState
@@ -31,8 +33,16 @@ step secs gstate@Running {elapsedTime = et} = do
 
 step secs gstate@Paused {elapsedTime = et} =
   return gstate {elapsedTime = et + secs}
-step secs gstate@GameOver {elapsedTime = et} =
-  return gstate {elapsedTime = et + secs}
+step secs gstate@GameOver { elapsedTime = et, score = sc, highScore = hsc } =
+  if hsc < 0
+    then do
+      mh <- readHighScore highScoreFilePath
+      let oldHigh = fromMaybe 0 mh
+          newHigh = max oldHigh sc
+      if sc > oldHigh then writeHighScore highScoreFilePath sc else return ()
+      return gstate { elapsedTime = et + secs, highScore = newHigh }
+    else
+      return gstate { elapsedTime = et + secs }
 step secs gstate@GameVictory {elapsedTime = et} =
   return gstate {elapsedTime = et + secs}
 
@@ -169,7 +179,7 @@ shootEnemy _ _ _ e (esAcc, bsAcc) =
 checkPlayerCollisions :: Float -> GameState -> GameState
 checkPlayerCollisions secs gstate@Running {player = pl, enemies = enems, score = sc, bullets = bulls, sprites = s} =
   if any (isCollidingEnem pl) enems || any (isCollidingBull pl) (enemyBullets bulls)
-    then GameOver {elapsedTime = 0, name = "", score = sc, highScore = 0, sprites = s}
+    then GameOver {elapsedTime = 0, name = "", score = sc, highScore = -1, sprites = s} 
     else gstate
   where
     isCollidingEnem Player {position = (px, py)} Shooter {enemyPos = (ex, ey)} =
@@ -267,8 +277,10 @@ checkPhase _ gstate = return gstate
 -- High score
 readHighScore :: FilePath -> IO (Maybe Int)
 readHighScore path = do
-    contents <- readFile path
-    return (readMaybe contents)
+    contents <- try (readFile path) :: IO (Either IOException String)
+    case contents of
+      Left _        -> return Nothing
+      Right contents -> return (readMaybe contents)
 
 writeHighScore :: FilePath -> Int -> IO ()
 writeHighScore path score = writeFile path (show score)
