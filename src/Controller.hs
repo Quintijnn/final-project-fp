@@ -19,7 +19,8 @@ step secs gstate@Menu {selectedOption = opt, sprites = s} =
     1 -> return (startGameState s)
     2 -> exitSuccess
     _ -> return gstate
-step secs gstate@Running {elapsedTime = et} =
+
+step secs gstate@Running {elapsedTime = et} = do
   let movedPlayerState = moveWithKeys secs gstate
       movedBulletsState = moveBullets secs movedPlayerState
       movedEnemiesState = moveEnemies secs movedBulletsState
@@ -27,8 +28,9 @@ step secs gstate@Running {elapsedTime = et} =
       checkEnemyCollisionsState = checkEnemyCollisions secs enemiesShootState
       checkPlayerCollisionsState = checkPlayerCollisions secs checkEnemyCollisionsState
       reloadedState = simpleReload secs checkPlayerCollisionsState
-      checkPhaseState = checkPhase secs reloadedState
-   in return checkPhaseState {elapsedTime = et + secs}
+  checkPhaseState <- checkPhase secs reloadedState
+  return checkPhaseState {elapsedTime = et + secs}
+
 step secs gstate@Paused {elapsedTime = et} =
   return gstate {elapsedTime = et + secs}
 step secs gstate@GameOver { elapsedTime = et, score = sc, highScore = hsc } =
@@ -46,7 +48,7 @@ step secs gstate@GameVictory {elapsedTime = et} =
 
 -- Handle user input
 handleInput :: Event -> GameState -> IO GameState
--- Runnning
+-- Running
 handleInput (EventKey (SpecialKey key) Down _ _) state@Running {keysPressed = ks}
   | key `elem` [KeyUp, KeyDown] = return state {keysPressed = key : ks}
 handleInput (EventKey (SpecialKey key) Up _ _) state@Running {keysPressed = ks}
@@ -102,7 +104,7 @@ moveBullets secs gstate@Running {bullets = bulls} = gstate {bullets = newBullets
   where
     newBullets = filter isOnScreen $ map moveBullet bulls
     moveBullet (Bullet (bx, by) speed sprite) = Bullet (bx + speed * secs, by) speed sprite
-    -- on-screen when x is between -400 and 400 AND y between -300 and 300
+    -- on-screen when x is between -600 and 600 AND y between -300 and 300
     isOnScreen (Bullet (bx, by) _ _) = bx >= (-600) && bx <= 600 && by >= (-300) && by <= 300
 moveBullets _ gstate = gstate
 
@@ -176,32 +178,33 @@ checkEnemyCollisions _ gstate@Running {bullets = bulls, enemies = enems, score =
       isHit (Bullet (bx, by) _ _) Shooter {enemyPos = (ex, ey)} = sqrt ((bx - ex)^2 + (by - ey)^2) < 32
 
   in gstate { enemies = enems', bullets = bulls', score = newScore }
+
 checkEnemyCollisions _ gstate = gstate
 
 -- enemiesShoot: safe for non-Running states and updates shoot timers
 enemiesShoot :: Float -> GameState -> GameState
-enemiesShoot secs gstate@Running {enemies = enems, bullets = bulls, sprites = s} = 
+enemiesShoot secs gstate@Running {enemies = enems, bullets = bulls, sprites = s} =
   let resetInterval = 3 -- seconds between shots, tweak as needed
-      (newEnems, newBulls) = foldr (shootEnemy (bulletS s) secs resetInterval) ([], bulls) enems 
+      (newEnems, newBulls) = foldr (shootEnemy (bulletS s) secs resetInterval) ([], bulls) enems
    in gstate {enemies = newEnems, bullets = newBulls}
 -- if game state is not Running, leave it unchanged
 enemiesShoot _ gs = gs
 
 -- shootEnemy: process one enemy, produce updated enemy list head and possibly a new bullet
-shootEnemy :: Sprite -> Float -> Float -> Enemy -> ([Enemy], [Bullet]) -> ([Enemy], [Bullet]) 
-shootEnemy bS secs reset e@(Shooter {enemyPos = (ex, ey), shootInterval = si}) (esAcc, bsAcc) 
+shootEnemy :: Sprite -> Float -> Float -> Enemy -> ([Enemy], [Bullet]) -> ([Enemy], [Bullet])
+shootEnemy bS secs reset e@(Shooter {enemyPos = (ex, ey), shootInterval = si}) (esAcc, bsAcc)
   | si - secs <= 0 =
-      let newBullet = Bullet {bulletPos = (ex - 20, ey), bulletSpeed = -400, bulletSprite = bS} 
+      let newBullet = Bullet {bulletPos = (ex - 20, ey), bulletSpeed = -400, bulletSprite = bS}
           updatedEnemy = e {shootInterval = reset}
        in (updatedEnemy : esAcc, newBullet : bsAcc)
   | otherwise =
       let updatedEnemy = e {shootInterval = si - secs}
        in (updatedEnemy : esAcc, bsAcc)
-shootEnemy _ _ _ e (esAcc, bsAcc) = 
+shootEnemy _ _ _ e (esAcc, bsAcc) =
   (e : esAcc, bsAcc)
 
 checkPlayerCollisions :: Float -> GameState -> GameState
-checkPlayerCollisions secs gstate@Running {player = pl, enemies = enems, score = sc, bullets = bulls, sprites = s} = 
+checkPlayerCollisions secs gstate@Running {player = pl, enemies = enems, score = sc, bullets = bulls, sprites = s} =
   if any (isCollidingEnem pl) enems || any (isCollidingBull pl) (enemyBullets bulls)
     then GameOver {elapsedTime = 0, name = "", score = sc, highScore = -1, sprites = s} 
     else gstate
@@ -215,6 +218,7 @@ checkPlayerCollisions secs gstate@Running {player = pl, enemies = enems, score =
     isCollidingBull Player {position = (px, py)} Bullet {bulletPos = (bx, by)} =
       let distance = sqrt ((px - bx) ^ 2 + (py - by) ^ 2)
        in distance < 25 + 20
+checkPlayerCollisions _ gstate = gstate
 
 enemyBullets :: [Bullet] -> [Bullet]
 enemyBullets = filter (\b -> bulletSpeed b < 0)
@@ -232,47 +236,70 @@ simpleReload secs gstate@Running {player = pl@Player {ammo = amm, reloadTimer = 
       gstate {player = pl {reloadTimer = rt + secs}}
 simpleReload _ gstate = gstate
 
--- Unused
+-- Random position helpers
 getRandomPositionX :: IO Float
-getRandomPositionX = randomRIO (-400, 600)
--- Unused
+getRandomPositionX = randomRIO (400, 600)
+
 getRandomPositionY :: IO Float
 getRandomPositionY = randomRIO (-290, 290)
--- Unused
+
 getRandomPosition :: IO (Float, Float)
 getRandomPosition = do
   x <- getRandomPositionX
   y <- getRandomPositionY
   return (x, y)
 
--- Unused
 spawnEnemiesAtRandomPositions :: Int -> Enemy -> Sprite -> IO [Enemy]
-spawnEnemiesAtRandomPositions n Shooter {} s =
+spawnEnemiesAtRandomPositions n Shooter{} s =
   mapM
     ( \_ -> do
         pos <- getRandomPosition
-        return Shooter {enemyPos = pos, enemyDir = (-1, 0), shootInterval = 3, enemySprite = s}
+        return Shooter {enemyPos = pos, enemyDir = (-1, 2), shootInterval = 3, enemySprite = s}
     )
     [1 .. n]
-spawnEnemiesAtRandomPositions n Runner {} s =
+spawnEnemiesAtRandomPositions n Runner{} s =
   mapM
     ( \_ -> do
         pos <- getRandomPosition
-        return Runner {enemyPos = pos, enemyDir = (-1, 0), enemySprite = s}
+        return Runner {enemyPos = pos, enemyDir = (-1, 2), enemySprite = s}
     )
     [1 .. n]
 
-checkPhase :: Float -> GameState -> GameState
-checkPhase secs gstate@Running {player = player@Player{ammo = amm}, enemyPhase = enemPhase, enemies = enems, score = sc, sprites = s} 
-      | enemPhase == 1 && null enems =
-          gstate{player = player{ammo = 10}, enemyPhase = 2, enemies = enemiesPhase2 (runnerS s) (shooterS s), score = sc + 50} 
-      | enemPhase == 2 && null enems =
-          gstate{player = player{ammo = 10}, enemyPhase = 3, enemies = enemiesPhase3 (runnerS s) (shooterS s), score = sc + 70} 
-      | enemPhase == 3 && null enems =
-          GameVictory {elapsedTime = 0, name = "", score = sc + 100, highScores = [], sprites = s}
-      | otherwise = gstate
+-- checkPhase now returns IO GameState because spawning is in IO
+checkPhase :: Float -> GameState -> IO GameState
+checkPhase secs gstate@Running
+  { player = player@Player {ammo = amm}
+  , enemyPhase = enemPhase
+  , enemies = enems
+  , score = sc
+  , sprites = s@Sprites {shooterS = sS, runnerS = rS}
+  }
+  | enemPhase == 1 && null enems = do
+      randomEnemies1 <- spawnEnemiesAtRandomPositions 6 Runner{} rS
+      randomEnemies2 <- spawnEnemiesAtRandomPositions 3 Shooter{} sS
+      let newEnemies = randomEnemies1 ++ randomEnemies2
+      return gstate
+        { player = player {ammo = 10}
+        , enemyPhase = 2
+        , enemies = newEnemies
+        , score = sc + 50
+        }
 
-checkPhase _ gstate = gstate
+  | enemPhase == 2 && null enems = do
+      let newEnemies = enemiesPhase3 rS sS
+      return gstate
+        { player = player {ammo = 10}
+        , enemyPhase = 3
+        , enemies = newEnemies
+        , score = sc + 70
+        }
+
+  | enemPhase == 3 && null enems =
+      return GameVictory {elapsedTime = 0, name = "", score = sc + 100, highScores = [], sprites = s}
+
+  | otherwise = return gstate
+
+checkPhase _ gstate = return gstate
 
 -- High score
 readHighScore :: FilePath -> IO (Maybe Int)
@@ -287,4 +314,3 @@ writeHighScore path score = writeFile path (show score)
 
 highScoreFilePath :: FilePath
 highScoreFilePath = "highscore.txt"
-

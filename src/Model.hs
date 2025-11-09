@@ -126,6 +126,16 @@ enemiesPhase3 rS sS =
   [ Runner {enemyPos = (400, 100), enemyDir = (-1, 2), enemySprite = rS, enemyStatus = Alive},
     Runner {enemyPos = (440, 80), enemyDir = (-1, 2), enemySprite = rS, enemyStatus = Alive},
     Runner {enemyPos = (480, 60), enemyDir = (-1, 2), enemySprite = rS, enemyStatus = Alive},
+    Shooter {enemyPos = (520, 40), enemyDir = (-1, 2), shootInterval = 2, enemySprite = sS, enemyStatus = Alive},
+    Shooter {enemyPos = (560, 20), enemyDir = (-1, 2), shootInterval = 3, enemySprite = sS, enemyStatus = Alive},
+    Shooter {enemyPos = (600, -150), enemyDir = (-1, 2), shootInterval = 3, enemySprite = sS, enemyStatus = Alive}
+  ]
+
+enemiesPhase4 :: Sprite -> Sprite -> [Enemy]
+enemiesPhase4 rS sS =
+  [ Runner {enemyPos = (400, 100), enemyDir = (-1, 2), enemySprite = rS, enemyStatus = Alive},
+    Runner {enemyPos = (440, 80), enemyDir = (-1, 2), enemySprite = rS, enemyStatus = Alive},
+    Runner {enemyPos = (480, 60), enemyDir = (-1, 2), enemySprite = rS, enemyStatus = Alive},
     Runner {enemyPos = (500, 40), enemyDir = (-1, 2), enemySprite = rS, enemyStatus = Alive},
     Runner {enemyPos = (540, 20), enemyDir = (-1, 2), enemySprite = rS, enemyStatus = Alive},
     Runner {enemyPos = (580, 0), enemyDir = (-1, 2), enemySprite = rS, enemyStatus = Alive},
