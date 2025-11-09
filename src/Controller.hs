@@ -96,8 +96,6 @@ fireBullet (dx, dy) speed gstate@Running {player = pl, bullets = bulls, sprites 
       , bulletSprite = bulletS s
       }
 
-
-
 -- Move the bullets and drop off-screen ones
 moveBullets :: Float -> GameState -> GameState
 moveBullets secs gstate@Running {bullets = bulls} = gstate {bullets = newBullets}
@@ -109,49 +107,76 @@ moveBullets secs gstate@Running {bullets = bulls} = gstate {bullets = newBullets
 moveBullets _ gstate = gstate
 
 moveEnemies :: Float -> GameState -> GameState
-moveEnemies secs gstate@Running {enemies = enems} = gstate {enemies = newEnems}
-  where
-    newEnems = map (`moveEnemy` secs) enems
+moveEnemies secs gstate@Running {enemies = enems} =
+  let advanced = map (`moveEnemy` secs) enems
+      aliveOrAnimating = filter keepEnemy advanced
+      keepEnemy e = case enemyStatus e of
+        Dying t -> t < 0.40     -- remove after 0.4s
+        Alive   -> True
+  in gstate {enemies = aliveOrAnimating}
+moveEnemies _ gstate = gstate
 
 moveEnemy :: Enemy -> Float -> Enemy
-moveEnemy (Runner {enemyPos = (oldX, oldY), enemyDir = (oldDirX, oldDirY), enemySprite = s}) secs = 
-  let speed = 75
-      (dirX, dirY)
-        | oldY > 290 = (oldDirX, -2)
-        | oldY < -290 = (oldDirX, 2)
-        | otherwise = (oldDirX, oldDirY)
-      newX = oldX + dirX * speed * secs
-      newY = oldY + dirY * speed * secs
-   in Runner {enemyPos = (newX, newY), enemyDir = (dirX, dirY), enemySprite = s} 
-moveEnemy (Shooter {enemyPos = (oldX, oldY), enemyDir = (oldDirX, oldDirY), shootInterval = si, enemySprite = s}) secs = 
-  let speed = 75
-      (dirX, dirY)
-        | oldY > 290 = (oldDirX, -2)
-        | oldY < -290 = (oldDirX, 2)
-        | otherwise = (oldDirX, oldDirY)
-      newX = oldX + dirX * speed * secs
-      newY = oldY + dirY * speed * secs
-   in Shooter {enemyPos = (newX, newY), enemyDir = (dirX, dirY), shootInterval = si, enemySprite = s}
+-- Runners
+moveEnemy e@Runner{enemyPos = (oldX, oldY), enemyDir = (oldDirX, oldDirY), enemySprite = s, enemyStatus = st} secs =
+  case st of
+    Alive ->
+      let speed = 75
+          (dirX, dirY)
+            | oldY > 290  = (oldDirX, -2)
+            | oldY < -290 = (oldDirX,  2)
+            | otherwise   = (oldDirX, oldDirY)
+          newX = oldX + dirX * speed * secs
+          newY = oldY + dirY * speed * secs
+      in e { enemyPos = (newX, newY), enemyDir = (dirX, dirY) }
+    Dying t ->
+      e { enemyStatus = Dying (t + secs) }
+
+-- Shooters
+moveEnemy e@Shooter{enemyPos = (oldX, oldY), enemyDir = (oldDirX, oldDirY), shootInterval = si, enemySprite = s, enemyStatus = st} secs =
+  case st of
+    Alive ->
+      let speed = 75
+          (dirX, dirY)
+            | oldY > 290  = (oldDirX, -2)
+            | oldY < -290 = (oldDirX,  2)
+            | otherwise   = (oldDirX, oldDirY)
+          newX = oldX + dirX * speed * secs
+          newY = oldY + dirY * speed * secs
+      in e { enemyPos = (newX, newY), enemyDir = (dirX, dirY) }
+    Dying t ->
+      e { enemyStatus = Dying (t + secs) }
 
 checkEnemyCollisions :: Float -> GameState -> GameState
-checkEnemyCollisions secs gstate@Running {bullets = bulls, enemies = enems, score = sc} = gstate {enemies = remainingEnems, bullets = remainingBulls, score = newScore}
-  where
-    (remainingEnems, remainingBulls, hits) = foldl checkCollision (enems, bulls, 0) (playerBullets bulls)
-    newScore = sc + hits * 10
+checkEnemyCollisions _ gstate@Running {bullets = bulls, enemies = enems, score = sc} =
+  let pBulls = playerBullets bulls
+      applyBullet (es, bs, hits) b =
+        case markHit b es of
+          (True, es')  -> (es', filter (/= b) bs, hits + 1)
+          (False, es') -> (es', bs, hits)
 
-    checkCollision (es, bs, hitCount) b =
-      let (hitEnemies, aliveEnemies) = span (isHit b) es
-       in let (hitEnemies, aliveEnemies) = partition (isHit b) es
-           in if not (null hitEnemies)
-                then (aliveEnemies, filter (/= b) bs, hitCount + length hitEnemies)
-                else (es, bs, hitCount)
+      markHit :: Bullet -> [Enemy] -> (Bool, [Enemy])
+      markHit _ [] = (False, [])
+      markHit bullet (e:rest)
+        | isAlive e && isHit bullet e =
+            (True, setDying e : rest)
+        | otherwise =
+            let (hit, rest') = markHit bullet rest
+            in (hit, e : rest')
 
-    isHit (Bullet (bx, by) _ _) Shooter {enemyPos = (ex, ey)} =
-      let distance = sqrt ((bx - ex) ^ 2 + (by - ey) ^ 2)
-       in distance < 20 + 12
-    isHit (Bullet (bx, by) _ _) Runner {enemyPos = (ex, ey)} =
-      let distance = sqrt ((bx - ex) ^ 2 + (by - ey) ^ 2)
-       in distance < 20 + 12
+      isAlive e = case enemyStatus e of Alive -> True; _ -> False
+      setDying e = case e of
+        Runner{}  -> e { enemyStatus = Dying 0 }
+        Shooter{} -> e { enemyStatus = Dying 0 }
+
+      (enems', bulls', hits) = foldl applyBullet (enems, bulls, 0) pBulls
+      newScore = sc + hits * 10
+
+      isHit (Bullet (bx, by) _ _) Runner  {enemyPos = (ex, ey)} = sqrt ((bx - ex)^2 + (by - ey)^2) < 32
+      isHit (Bullet (bx, by) _ _) Shooter {enemyPos = (ex, ey)} = sqrt ((bx - ex)^2 + (by - ey)^2) < 32
+
+  in gstate { enemies = enems', bullets = bulls', score = newScore }
+checkEnemyCollisions _ gstate = gstate
 
 -- enemiesShoot: safe for non-Running states and updates shoot timers
 enemiesShoot :: Float -> GameState -> GameState

@@ -13,7 +13,7 @@ import Model
 loadSprite :: FilePath -> Int -> Int -> IO Sprite
 loadSprite path w h = do
   maybePic <- loadJuicyPNG path
-  let pic = maybe (color red (rectangleSolid (fromIntegral w) (fromIntegral h))) id maybePic
+  let pic = maybe (rectangleSolid (fromIntegral w) (fromIntegral h)) id maybePic
   return $ Sprite pic w h
 
 -- These will be initialized in main

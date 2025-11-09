@@ -39,7 +39,20 @@ drawBullet b =
 drawEnemy :: Enemy -> Picture
 drawEnemy e =
   let (x, y) = enemyPos e
-  in translate x y (spritePic (enemySprite e))
+      sp     = enemySprite e
+      basePic = spritePic sp
+      (w, h)  = (fromIntegral (spriteWidth sp), fromIntegral (spriteHeight sp))
+
+      blast t =
+        let col | t < 0.10  = white
+                | t < 0.20  = yellow
+                | t < 0.30  = orange
+                | otherwise = red
+        in color col (rectangleSolid w h)
+  in translate x y $
+       case enemyStatus e of
+         Alive   -> basePic
+         Dying t -> blast t 
 
 
 drawRock :: Rock -> Picture
