@@ -152,22 +152,22 @@ enemiesShoot secs gstate@Running {enemies = enems, bullets = bulls, sprites = s}
 enemiesShoot _ gs = gs
 
 -- shootEnemy: process one enemy, produce updated enemy list head and possibly a new bullet
-shootEnemy :: Sprite -> Float -> Float -> Enemy -> ([Enemy], [Bullet]) -> ([Enemy], [Bullet]) -- <-- Added 'Sprite'
-shootEnemy bS secs reset e@(Shooter {enemyPos = (ex, ey), shootInterval = si}) (esAcc, bsAcc) -- <-- Added 'bS'
+shootEnemy :: Sprite -> Float -> Float -> Enemy -> ([Enemy], [Bullet]) -> ([Enemy], [Bullet]) 
+shootEnemy bS secs reset e@(Shooter {enemyPos = (ex, ey), shootInterval = si}) (esAcc, bsAcc) 
   | si - secs <= 0 =
-      let newBullet = Bullet {bulletPos = (ex - 20, ey), bulletSpeed = -400, bulletSprite = bS} -- <-- Added 'bulletSprite = bS'
+      let newBullet = Bullet {bulletPos = (ex - 20, ey), bulletSpeed = -400, bulletSprite = bS} 
           updatedEnemy = e {shootInterval = reset}
        in (updatedEnemy : esAcc, newBullet : bsAcc)
   | otherwise =
       let updatedEnemy = e {shootInterval = si - secs}
        in (updatedEnemy : esAcc, bsAcc)
-shootEnemy _ _ _ e (esAcc, bsAcc) = -- <-- Added '_' to match new argument
+shootEnemy _ _ _ e (esAcc, bsAcc) = 
   (e : esAcc, bsAcc)
 
 checkPlayerCollisions :: Float -> GameState -> GameState
-checkPlayerCollisions secs gstate@Running {player = pl, enemies = enems, score = sc, bullets = bulls, sprites = s} = -- <-- Get 'sprites = s'
+checkPlayerCollisions secs gstate@Running {player = pl, enemies = enems, score = sc, bullets = bulls, sprites = s} = 
   if any (isCollidingEnem pl) enems || any (isCollidingBull pl) (enemyBullets bulls)
-    then GameOver {elapsedTime = 0, name = "", score = sc, highScores = [], sprites = s} -- <-- Add 'sprites = s'
+    then GameOver {elapsedTime = 0, name = "", score = sc, highScores = [], sprites = s} 
     else gstate
   where
     isCollidingEnem Player {position = (px, py)} Shooter {enemyPos = (ex, ey)} =
@@ -196,31 +196,33 @@ simpleReload secs gstate@Running {player = pl@Player {ammo = amm, reloadTimer = 
       gstate {player = pl {reloadTimer = rt + secs}}
 simpleReload _ gstate = gstate
 
+-- Unused
 getRandomPositionX :: IO Float
 getRandomPositionX = randomRIO (-400, 600)
-
+-- Unused
 getRandomPositionY :: IO Float
 getRandomPositionY = randomRIO (-290, 290)
-
+-- Unused
 getRandomPosition :: IO (Float, Float)
 getRandomPosition = do
   x <- getRandomPositionX
   y <- getRandomPositionY
   return (x, y)
 
-spawnEnemiesAtRandomPositions :: Int -> Enemy -> IO [Enemy]
-spawnEnemiesAtRandomPositions n Shooter {} =
+-- Unused
+spawnEnemiesAtRandomPositions :: Int -> Enemy -> Sprite -> IO [Enemy]
+spawnEnemiesAtRandomPositions n Shooter {} s =
   mapM
     ( \_ -> do
         pos <- getRandomPosition
-        return Shooter {enemyPos = pos, enemyDir = (-1, 0), shootInterval = 3}
+        return Shooter {enemyPos = pos, enemyDir = (-1, 0), shootInterval = 3, enemySprite = s}
     )
     [1 .. n]
-spawnEnemiesAtRandomPositions n Runner {} =
+spawnEnemiesAtRandomPositions n Runner {} s =
   mapM
     ( \_ -> do
         pos <- getRandomPosition
-        return Runner {enemyPos = pos, enemyDir = (-1, 0)}
+        return Runner {enemyPos = pos, enemyDir = (-1, 0), enemySprite = s}
     )
     [1 .. n]
 
