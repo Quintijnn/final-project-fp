@@ -21,8 +21,8 @@ drawState Running{player = pl, enemies = enems, bullets = bulls, rocks = rks, sc
     ammoText = drawAmmo (ammo pl)
 drawState Paused{} = 
   return drawPaused
-drawState GameOver{score = sc} = 
-  return $ drawGameOver sc
+drawState GameOver{score = sc, highScore = hsc} = 
+  return $ drawGameOver sc hsc
 drawState GameVictory{score = sc} = 
   return $ drawGameVictory sc
 
@@ -55,11 +55,12 @@ drawPaused = Pictures [ translate (-100) 0 $ scale 0.3 0.3 $ color yellow $ text
                       , translate (-150) (-120) $ scale 0.15 0.15 $ color white $ text "Press 'q' to quit to menu"
                       ]
 
-drawGameOver :: Int -> Picture
-drawGameOver sc = Pictures [ translate (-100) 0 $ scale 0.3 0.3 $ color red $ text "Game Over"
-                          , translate (-150) (-80) $ scale 0.15 0.15 $ color white $ text ("Your Score: " ++ show sc)
+drawGameOver :: Int -> Int -> Picture
+drawGameOver sc hsc = Pictures [ translate (-100) 0 $ scale 0.3 0.3 $ color red $ text "Game Over"
                           , translate (-150) (-40) $ scale 0.15 0.15 $ color white $ text "Press 'r' to restart"
-                          , translate (-150) (-120) $ scale 0.15 0.15 $ color white $ text "Press 'q' to quit to menu"
+                          , translate (-150) (-80) $ scale 0.15 0.15 $ color white $ text ("Your Score: " ++ show sc)
+                          , translate (-150) (-120) $ scale 0.15 0.15 $ color white $ text ("High score: " ++ show hsc)
+                          , translate (-150) (-160) $ scale 0.15 0.15 $ color white $ text "Press 'q' to quit to menu"
                           ]
               
 drawGameVictory :: Int -> Picture

@@ -25,7 +25,7 @@ data GameState
       { elapsedTime :: Float,
         name :: String,
         score :: Int,
-        highScores :: [(String, Int)], 
+        highScore :: Int, 
         sprites :: Sprites
       }
   | GameVictory

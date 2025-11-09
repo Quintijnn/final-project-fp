@@ -8,6 +8,7 @@ import System.Exit (exitSuccess)
 import System.Random
 import Text.ParserCombinators.ReadP (get)
 import View
+import Text.Read (readMaybe)
 
 -- | Handle one iteration of the game
 step :: Float -> GameState -> IO GameState
@@ -167,7 +168,7 @@ shootEnemy _ _ _ e (esAcc, bsAcc) =
 checkPlayerCollisions :: Float -> GameState -> GameState
 checkPlayerCollisions secs gstate@Running {player = pl, enemies = enems, score = sc, bullets = bulls, sprites = s} = 
   if any (isCollidingEnem pl) enems || any (isCollidingBull pl) (enemyBullets bulls)
-    then GameOver {elapsedTime = 0, name = "", score = sc, highScores = [], sprites = s} 
+    then GameOver {elapsedTime = 0, name = "", score = sc, highScore = 0, sprites = s} 
     else gstate
   where
     isCollidingEnem Player {position = (px, py)} Shooter {enemyPos = (ex, ey)} =
@@ -237,3 +238,16 @@ checkPhase secs gstate@Running {player = player@Player{ammo = amm}, enemyPhase =
       | otherwise = gstate
 
 checkPhase _ gstate = gstate
+
+-- High score
+readHighScore :: FilePath -> IO (Maybe Int)
+readHighScore path = do
+    contents <- readFile path
+    return (readMaybe contents)
+
+writeHighScore :: FilePath -> Int -> IO ()
+writeHighScore path score = writeFile path (show score)
+
+highScoreFilePath :: FilePath
+highScoreFilePath = "highscore.txt"
+
