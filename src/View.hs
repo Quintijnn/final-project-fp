@@ -78,7 +78,7 @@ drawGameOver sc hsc = Pictures [ translate (-100) 0 $ scale 0.3 0.3 $ color red 
               
 drawGameVictory :: Int -> Picture
 drawGameVictory sc = Pictures [ translate (-120) 0 $ scale 0.3 0.3 $ color green $ text "You Win!"
-                             , translate (-150) (-80) $ scale 0.15 0.15 $ color white $ text ("Your Score: " ++ show sc)
+                             , translate (-150) (-80) $ scale 0.15 0.15 $ color white $ text ("New highscore: " ++ show sc)
                              , translate (-150) (-40) $ scale 0.15 0.15 $ color white $ text "Press 'r' to restart"
                              , translate (-150) (-120) $ scale 0.15 0.15 $ color white $ text "Press 'q' to quit to menu"
                              ]

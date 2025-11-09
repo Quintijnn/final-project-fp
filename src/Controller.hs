@@ -63,10 +63,10 @@ handleInput (EventKey (Char '1') Down _ _) state@Menu {} = return $ state {selec
 handleInput (EventKey (Char '2') Down _ _) state@Menu {} = exitSuccess
 -- GameOver
 handleInput (EventKey (Char 'r') Down _ _) state@GameOver {sprites = s} = return $ Menu {elapsedTime = 0, selectedOption = 1, sprites = s}
-handleInput (EventKey (Char 'q') Down _ _) state@GameOver {} = return $ Menu {elapsedTime = 0, selectedOption = 0}
+handleInput (EventKey (Char 'q') Down _ _) state@GameOver {sprites = s} = return $ Menu {elapsedTime = 0, selectedOption = 0, sprites = s}
 -- GameVictory
 handleInput (EventKey (Char 'r') Down _ _) state@GameVictory {sprites = s} = return $ Menu {elapsedTime = 0, selectedOption = 1, sprites = s}
-handleInput (EventKey (Char 'q') Down _ _) state@GameVictory {} = return $ Menu {elapsedTime = 0, selectedOption = 0}
+handleInput (EventKey (Char 'q') Down _ _) state@GameVictory {sprites = s} = return $ Menu {elapsedTime = 0, selectedOption = 0, sprites = s}
 handleInput _ state = return state
 
 -- Move the player up or down
@@ -294,8 +294,9 @@ checkPhase secs gstate@Running
         , score = sc + 70
         }
 
-  | enemPhase == 3 && null enems =
-      return GameVictory {elapsedTime = 0, name = "", score = sc + 100, highScores = [], sprites = s}
+  | enemPhase == 3 && null enems = do 
+      hsc <- writeHighScore highScoreFilePath sc
+      return GameVictory {elapsedTime = 0, name = "", score = sc + 100, highScores = sc, sprites = s}
 
   | otherwise = return gstate
 

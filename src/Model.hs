@@ -32,7 +32,7 @@ data GameState
       { elapsedTime :: Float,
         name :: String,
         score :: Int,
-        highScores :: [(String, Int)], 
+        highScores :: Int, 
         sprites :: Sprites
       }
   | Menu
