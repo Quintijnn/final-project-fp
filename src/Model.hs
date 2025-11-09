@@ -13,104 +13,126 @@ data GameState
         bullets :: [Bullet],
         rocks :: [Rock],
         score :: Int,
-        keysPressed :: [SpecialKey]
+        keysPressed :: [SpecialKey], 
+        sprites :: Sprites
       }
   | Paused
       { elapsedTime :: Float,
-        prevState :: GameState
+        prevState :: GameState, 
+        sprites :: Sprites
       }
   | GameOver
       { elapsedTime :: Float,
         name :: String,
         score :: Int,
-        highScores :: [(String, Int)]
+        highScores :: [(String, Int)], 
+        sprites :: Sprites
       }
   | GameVictory
       { elapsedTime :: Float,
         name :: String,
         score :: Int,
-        highScores :: [(String, Int)]
+        highScores :: [(String, Int)], 
+        sprites :: Sprites
       }
   | Menu
       { elapsedTime :: Float,
-        selectedOption :: Int
+        selectedOption :: Int,
+        sprites :: Sprites
       }
 
 initialState :: GameState
 initialState = Menu {elapsedTime = 0, selectedOption = 0}
 
-startGameState :: GameState
-startGameState = Running {elapsedTime = 0, player = initialPlayer, enemyPhase = 1, enemies = enemiesPhase1, bullets = [], rocks = [], score = 0, keysPressed = []}
+startMenuState :: Sprites -> GameState
+startMenuState s = Menu
+  { elapsedTime = 0
+  , selectedOption = 0
+  , sprites = s
+  }
+
+startGameState :: Sprites -> GameState
+startGameState s = Running
+  { elapsedTime = 0,
+    player = initialPlayer (playerS s), 
+    enemyPhase = 1,
+    enemies = enemiesPhase1 (runnerS s) (shooterS s), 
+    bullets = [],
+    rocks = [],
+    score = 0,
+    keysPressed = [], 
+    sprites = s
+  }
 
 data Player = Player
   { position :: (Float, Float),
     health :: Int,
     ammo :: Int,
-    reloadTimer :: Float
-    -- , playerSprite :: Sprite
+    reloadTimer :: Float, 
+    playerSprite :: Sprite
   }
 
-initialPlayer :: Player
-initialPlayer = Player {position = (-500, 0), health = 1, ammo = 10, reloadTimer = 0}
+initialPlayer :: Sprite -> Player
+initialPlayer pSprite = Player {position = (-500, 0), health = 1, ammo = 10, reloadTimer = 0, playerSprite = pSprite}
 
 data Bullet = Bullet
   { bulletPos :: (Float, Float),
-    bulletSpeed :: Float
-    --, bulletSprite :: Sprite
+    bulletSpeed :: Float, 
+    bulletSprite :: Sprite 
   } deriving Eq
 
 data Enemy 
   = Shooter
     { enemyPos :: (Float, Float),
       enemyDir :: (Float, Float),
-      shootInterval :: Float
-      --, enemySprite :: Sprite
+      shootInterval :: Float,
+      enemySprite :: Sprite
     } 
   | Runner 
   {
     enemyPos :: (Float, Float),
-    enemyDir :: (Float, Float)
-    --, enemySprite :: Sprite
-  } deriving Eq
+    enemyDir :: (Float, Float), 
+    enemySprite :: Sprite
+  }
 
-enemiesPhase1 :: [Enemy]
-enemiesPhase1 =
-  [ Runner {enemyPos = (400, 100), enemyDir = (-1, 2)},
-    Runner {enemyPos = (440, 80), enemyDir = (-1, 2)},
-    Runner {enemyPos = (480, 60), enemyDir = (-1, 2)},
-    Runner {enemyPos = (520, 40), enemyDir = (-1, 2)},
-    Runner {enemyPos = (560, 20), enemyDir = (-1, 2)},
-    Runner {enemyPos = (600, 0), enemyDir = (-1, 2)},   
-    Shooter {enemyPos = (600, -150), enemyDir = (-1, 2), shootInterval = 3}
+enemiesPhase1 :: Sprite -> Sprite -> [Enemy]
+enemiesPhase1 rS sS =
+  [ Runner {enemyPos = (400, 100), enemyDir = (-1, 2), enemySprite = rS},
+    Runner {enemyPos = (440, 80), enemyDir = (-1, 2), enemySprite = rS},
+    Runner {enemyPos = (480, 60), enemyDir = (-1, 2), enemySprite = rS},
+    Runner {enemyPos = (520, 40), enemyDir = (-1, 2), enemySprite = rS},
+    Runner {enemyPos = (560, 20), enemyDir = (-1, 2), enemySprite = rS},
+    Runner {enemyPos = (600, 0), enemyDir = (-1, 2), enemySprite = rS},   
+    Shooter {enemyPos = (600, -150), enemyDir = (-1, 2), shootInterval = 3, enemySprite = sS}
   ]
 
-enemiesPhase2 :: [Enemy]
-enemiesPhase2 =
-  [ Runner {enemyPos = (400, 100), enemyDir = (-1, 2)},
-    Runner {enemyPos = (440, 80), enemyDir = (-1, 2)},
-    Runner {enemyPos = (480, 60), enemyDir = (-1, 2)},
-    Shooter {enemyPos = (520, 40), enemyDir = (-1, 2), shootInterval = 2},
-    Shooter {enemyPos = (560, 20), enemyDir = (-1, 2), shootInterval = 3},
-    Shooter {enemyPos = (600, -150), enemyDir = (-1, 2), shootInterval = 3}
+enemiesPhase2 :: Sprite -> Sprite -> [Enemy]
+enemiesPhase2 rS sS =
+  [ Runner {enemyPos = (400, 100), enemyDir = (-1, 2), enemySprite = rS},
+    Runner {enemyPos = (440, 80), enemyDir = (-1, 2), enemySprite = rS},
+    Runner {enemyPos = (480, 60), enemyDir = (-1, 2), enemySprite = rS},
+    Shooter {enemyPos = (520, 40), enemyDir = (-1, 2), shootInterval = 2, enemySprite = sS},
+    Shooter {enemyPos = (560, 20), enemyDir = (-1, 2), shootInterval = 3, enemySprite = sS},
+    Shooter {enemyPos = (600, -150), enemyDir = (-1, 2), shootInterval = 3, enemySprite = sS}
   ]
 
-enemiesPhase3 :: [Enemy]
-enemiesPhase3 =
-  [ Runner {enemyPos = (400, 100), enemyDir = (-1, 2)},
-    Runner {enemyPos = (440, 80), enemyDir = (-1, 2)},
-    Runner {enemyPos = (480, 60), enemyDir = (-1, 2)},
-    Runner {enemyPos = (500, 40), enemyDir = (-1, 2)},
-    Runner {enemyPos = (540, 20), enemyDir = (-1, 2)},
-    Runner {enemyPos = (580, 0), enemyDir = (-1, 2)},
-    Runner {enemyPos = (640, 20), enemyDir = (-1, 2)},
-    Runner {enemyPos = (680, 40), enemyDir = (-1, 2)},
-    Runner {enemyPos = (720, 60), enemyDir = (-1, 2)},
-    Shooter {enemyPos = (780, 80), enemyDir = (-1, 2), shootInterval = 2},
-    Shooter {enemyPos = (820, 60), enemyDir = (-1, 2), shootInterval = 2},
-    Shooter {enemyPos = (860, 40), enemyDir = (-1, 2), shootInterval = 3},
-    Shooter {enemyPos = (920, 20), enemyDir = (-1, 2), shootInterval = 3},
-    Shooter {enemyPos = (960, 0), enemyDir = (-1, 2), shootInterval = 3},
-    Shooter {enemyPos = (1000, -150), enemyDir = (-1, 2), shootInterval = 2}
+enemiesPhase3 :: Sprite -> Sprite -> [Enemy]
+enemiesPhase3 rS sS =
+  [ Runner {enemyPos = (400, 100), enemyDir = (-1, 2), enemySprite = rS},
+    Runner {enemyPos = (440, 80), enemyDir = (-1, 2), enemySprite = rS},
+    Runner {enemyPos = (480, 60), enemyDir = (-1, 2), enemySprite = rS},
+    Runner {enemyPos = (500, 40), enemyDir = (-1, 2), enemySprite = rS},
+    Runner {enemyPos = (540, 20), enemyDir = (-1, 2), enemySprite = rS},
+    Runner {enemyPos = (580, 0), enemyDir = (-1, 2), enemySprite = rS},
+    Runner {enemyPos = (640, 20), enemyDir = (-1, 2), enemySprite = rS},
+    Runner {enemyPos = (680, 40), enemyDir = (-1, 2), enemySprite = rS},
+    Runner {enemyPos = (720, 60), enemyDir = (-1, 2), enemySprite = rS},
+    Shooter {enemyPos = (780, 80), enemyDir = (-1, 2), shootInterval = 2, enemySprite = sS},
+    Shooter {enemyPos = (820, 60), enemyDir = (-1, 2), shootInterval = 2, enemySprite = sS},
+    Shooter {enemyPos = (860, 40), enemyDir = (-1, 2), shootInterval = 3, enemySprite = sS},
+    Shooter {enemyPos = (920, 20), enemyDir = (-1, 2), shootInterval = 3, enemySprite = sS},
+    Shooter {enemyPos = (960, 0), enemyDir = (-1, 2), shootInterval = 3, enemySprite = sS},
+    Shooter {enemyPos = (1000, -150), enemyDir = (-1, 2), shootInterval = 2, enemySprite = sS}
   ]
 
 data Rock = Rock
@@ -118,14 +140,17 @@ data Rock = Rock
     rockPos :: (Float, Float),
     flySpeed :: Int,
     rotationSpeed :: Int
-    --, rockSprite :: Sprite
   }
 
 data Sprite = Sprite
-  { image :: String,
-    width :: Int,
-    height :: Int
-  }
+  { spritePic :: Picture
+  , spriteWidth :: Int
+  , spriteHeight :: Int
+  } deriving Eq
 
-initialPlayerSprite :: Sprite
-initialPlayerSprite = Sprite {image = "assets/player.png", width = 50, height = 50}
+data Sprites = Sprites
+  { playerS  :: Sprite
+  , runnerS  :: Sprite
+  , shooterS :: Sprite
+  , bulletS  :: Sprite
+  }

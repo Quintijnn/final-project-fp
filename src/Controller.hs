@@ -11,9 +11,9 @@ import View
 
 -- | Handle one iteration of the game
 step :: Float -> GameState -> IO GameState
-step secs gstate@Menu {selectedOption = opt} =
+step secs gstate@Menu {selectedOption = opt, sprites = s} =
   case opt of
-    1 -> return startGameState
+    1 -> return (startGameState s)
     2 -> exitSuccess
     _ -> return gstate
 step secs gstate@Running {elapsedTime = et} =
@@ -40,19 +40,19 @@ handleInput (EventKey (SpecialKey key) Down _ _) state@Running {keysPressed = ks
   | key `elem` [KeyUp, KeyDown] = return state {keysPressed = key : ks}
 handleInput (EventKey (SpecialKey key) Up _ _) state@Running {keysPressed = ks}
   | key `elem` [KeyUp, KeyDown] = return state {keysPressed = filter (/= key) ks}
-handleInput (EventKey (SpecialKey KeySpace) Down _ _) state = return $ fireBullet (0, 1) 500 state
-handleInput (EventKey (Char 'p') Down _ _) state@Running {} = return $ Paused {elapsedTime = 0, prevState = state}
+handleInput (EventKey (SpecialKey KeySpace) Down _ _) state@Running {} = return $ fireBullet (0, 1) 500 state
+handleInput (EventKey (Char 'p') Down _ _) state@Running {sprites = s} = return $ Paused {elapsedTime = 0, prevState = state, sprites = s}
 -- Paused
 handleInput (EventKey (Char 'p') Down _ _) state@Paused {} = return $ prevState state
-handleInput (EventKey (Char 'q') Down _ _) state@Paused {} = return $ Menu {elapsedTime = 0, selectedOption = 0}
+handleInput (EventKey (Char 'q') Down _ _) state@Paused {sprites = s} = return $ Menu {elapsedTime = 0, selectedOption = 0, sprites = s}
 -- Menu
 handleInput (EventKey (Char '1') Down _ _) state@Menu {} = return $ state {selectedOption = 1}
 handleInput (EventKey (Char '2') Down _ _) state@Menu {} = exitSuccess
 -- GameOver
-handleInput (EventKey (Char 'r') Down _ _) state@GameOver {} = return $ Menu {elapsedTime = 0, selectedOption = 1}
+handleInput (EventKey (Char 'r') Down _ _) state@GameOver {sprites = s} = return $ Menu {elapsedTime = 0, selectedOption = 1, sprites = s}
 handleInput (EventKey (Char 'q') Down _ _) state@GameOver {} = return $ Menu {elapsedTime = 0, selectedOption = 0}
 -- GameVictory
-handleInput (EventKey (Char 'r') Down _ _) state@GameVictory {} = return $ Menu {elapsedTime = 0, selectedOption = 1}
+handleInput (EventKey (Char 'r') Down _ _) state@GameVictory {sprites = s} = return $ Menu {elapsedTime = 0, selectedOption = 1, sprites = s}
 handleInput (EventKey (Char 'q') Down _ _) state@GameVictory {} = return $ Menu {elapsedTime = 0, selectedOption = 0}
 handleInput _ state = return state
 
@@ -73,22 +73,28 @@ moveWithKeys secs gstate@Running {keysPressed = ks}
   | otherwise = gstate
 
 fireBullet :: (Float, Float) -> Float -> GameState -> GameState
-fireBullet (dx, dy) speed gstate@Running {player = pl@Player {position = (px, py), ammo = amm}, bullets = bulls} =
-  if amm <= 0
+fireBullet (dx, dy) speed gstate@Running {player = pl, bullets = bulls, sprites = s} =
+  if ammo pl <= 0
     then gstate
-    else gstate {player = pl {ammo = amm - 1}, bullets = newBullet : bulls}
+    else gstate {player = pl {ammo = ammo pl - 1}, bullets = newBullet : bulls}
   where
-    newBullet = Bullet {bulletPos = (px + dx * 5, py + dy * 5), bulletSpeed = speed}
-fireBullet _ _ gstate = gstate 
+    (px, py) = position pl
+    newBullet = Bullet
+      { bulletPos = (px + dx * 5, py + dy * 5)
+      , bulletSpeed = speed
+      , bulletSprite = bulletS s
+      }
+
+
 
 -- Move the bullets and drop off-screen ones
 moveBullets :: Float -> GameState -> GameState
 moveBullets secs gstate@Running {bullets = bulls} = gstate {bullets = newBullets}
   where
     newBullets = filter isOnScreen $ map moveBullet bulls
-    moveBullet (Bullet (bx, by) speed) = Bullet (bx + speed * secs, by) speed
+    moveBullet (Bullet (bx, by) speed sprite) = Bullet (bx + speed * secs, by) speed sprite
     -- on-screen when x is between -400 and 400 AND y between -300 and 300
-    isOnScreen (Bullet (bx, by) _) = bx >= (-600) && bx <= 600 && by >= (-300) && by <= 300
+    isOnScreen (Bullet (bx, by) _ _) = bx >= (-600) && bx <= 600 && by >= (-300) && by <= 300
 moveBullets _ gstate = gstate
 
 moveEnemies :: Float -> GameState -> GameState
@@ -97,7 +103,7 @@ moveEnemies secs gstate@Running {enemies = enems} = gstate {enemies = newEnems}
     newEnems = map (`moveEnemy` secs) enems
 
 moveEnemy :: Enemy -> Float -> Enemy
-moveEnemy (Runner {enemyPos = (oldX, oldY), enemyDir = (oldDirX, oldDirY)}) secs =
+moveEnemy (Runner {enemyPos = (oldX, oldY), enemyDir = (oldDirX, oldDirY), enemySprite = s}) secs = 
   let speed = 75
       (dirX, dirY)
         | oldY > 290 = (oldDirX, -2)
@@ -105,8 +111,8 @@ moveEnemy (Runner {enemyPos = (oldX, oldY), enemyDir = (oldDirX, oldDirY)}) secs
         | otherwise = (oldDirX, oldDirY)
       newX = oldX + dirX * speed * secs
       newY = oldY + dirY * speed * secs
-   in Runner {enemyPos = (newX, newY), enemyDir = (dirX, dirY)}
-moveEnemy (Shooter {enemyPos = (oldX, oldY), enemyDir = (oldDirX, oldDirY), shootInterval = si}) secs =
+   in Runner {enemyPos = (newX, newY), enemyDir = (dirX, dirY), enemySprite = s} 
+moveEnemy (Shooter {enemyPos = (oldX, oldY), enemyDir = (oldDirX, oldDirY), shootInterval = si, enemySprite = s}) secs = 
   let speed = 75
       (dirX, dirY)
         | oldY > 290 = (oldDirX, -2)
@@ -114,7 +120,7 @@ moveEnemy (Shooter {enemyPos = (oldX, oldY), enemyDir = (oldDirX, oldDirY), shoo
         | otherwise = (oldDirX, oldDirY)
       newX = oldX + dirX * speed * secs
       newY = oldY + dirY * speed * secs
-   in Shooter {enemyPos = (newX, newY), enemyDir = (dirX, dirY), shootInterval = si}
+   in Shooter {enemyPos = (newX, newY), enemyDir = (dirX, dirY), shootInterval = si, enemySprite = s}
 
 checkEnemyCollisions :: Float -> GameState -> GameState
 checkEnemyCollisions secs gstate@Running {bullets = bulls, enemies = enems, score = sc} = gstate {enemies = remainingEnems, bullets = remainingBulls, score = newScore}
@@ -129,39 +135,39 @@ checkEnemyCollisions secs gstate@Running {bullets = bulls, enemies = enems, scor
                 then (aliveEnemies, filter (/= b) bs, hitCount + length hitEnemies)
                 else (es, bs, hitCount)
 
-    isHit (Bullet (bx, by) _) Shooter {enemyPos = (ex, ey)} =
+    isHit (Bullet (bx, by) _ _) Shooter {enemyPos = (ex, ey)} =
       let distance = sqrt ((bx - ex) ^ 2 + (by - ey) ^ 2)
        in distance < 20 + 12
-    isHit (Bullet (bx, by) _) Runner {enemyPos = (ex, ey)} =
+    isHit (Bullet (bx, by) _ _) Runner {enemyPos = (ex, ey)} =
       let distance = sqrt ((bx - ex) ^ 2 + (by - ey) ^ 2)
        in distance < 20 + 12
 
 -- enemiesShoot: safe for non-Running states and updates shoot timers
 enemiesShoot :: Float -> GameState -> GameState
-enemiesShoot secs gstate@Running {enemies = enems, bullets = bulls} =
+enemiesShoot secs gstate@Running {enemies = enems, bullets = bulls, sprites = s} = 
   let resetInterval = 3 -- seconds between shots, tweak as needed
-      (newEnems, newBulls) = foldr (shootEnemy secs resetInterval) ([], bulls) enems
+      (newEnems, newBulls) = foldr (shootEnemy (bulletS s) secs resetInterval) ([], bulls) enems 
    in gstate {enemies = newEnems, bullets = newBulls}
 -- if game state is not Running, leave it unchanged
 enemiesShoot _ gs = gs
 
 -- shootEnemy: process one enemy, produce updated enemy list head and possibly a new bullet
-shootEnemy :: Float -> Float -> Enemy -> ([Enemy], [Bullet]) -> ([Enemy], [Bullet])
-shootEnemy secs reset e@(Shooter {enemyPos = (ex, ey), shootInterval = si}) (esAcc, bsAcc)
+shootEnemy :: Sprite -> Float -> Float -> Enemy -> ([Enemy], [Bullet]) -> ([Enemy], [Bullet]) -- <-- Added 'Sprite'
+shootEnemy bS secs reset e@(Shooter {enemyPos = (ex, ey), shootInterval = si}) (esAcc, bsAcc) -- <-- Added 'bS'
   | si - secs <= 0 =
-      let newBullet = Bullet {bulletPos = (ex - 20, ey), bulletSpeed = -400} -- adjust spawn offset / speed as needed
+      let newBullet = Bullet {bulletPos = (ex - 20, ey), bulletSpeed = -400, bulletSprite = bS} -- <-- Added 'bulletSprite = bS'
           updatedEnemy = e {shootInterval = reset}
        in (updatedEnemy : esAcc, newBullet : bsAcc)
   | otherwise =
       let updatedEnemy = e {shootInterval = si - secs}
        in (updatedEnemy : esAcc, bsAcc)
-shootEnemy _ _ e (esAcc, bsAcc) =
+shootEnemy _ _ _ e (esAcc, bsAcc) = -- <-- Added '_' to match new argument
   (e : esAcc, bsAcc)
 
 checkPlayerCollisions :: Float -> GameState -> GameState
-checkPlayerCollisions secs gstate@Running {player = pl, enemies = enems, score = sc, bullets = bulls} =
+checkPlayerCollisions secs gstate@Running {player = pl, enemies = enems, score = sc, bullets = bulls, sprites = s} = -- <-- Get 'sprites = s'
   if any (isCollidingEnem pl) enems || any (isCollidingBull pl) (enemyBullets bulls)
-    then GameOver {elapsedTime = 0, name = "", score = sc, highScores = []}
+    then GameOver {elapsedTime = 0, name = "", score = sc, highScores = [], sprites = s} -- <-- Add 'sprites = s'
     else gstate
   where
     isCollidingEnem Player {position = (px, py)} Shooter {enemyPos = (ex, ey)} =
@@ -219,13 +225,13 @@ spawnEnemiesAtRandomPositions n Runner {} =
     [1 .. n]
 
 checkPhase :: Float -> GameState -> GameState
-checkPhase secs gstate@Running {player = player@Player{ammo = amm}, enemyPhase = enemPhase, enemies = enems, score = sc} 
+checkPhase secs gstate@Running {player = player@Player{ammo = amm}, enemyPhase = enemPhase, enemies = enems, score = sc, sprites = s} 
       | enemPhase == 1 && null enems =
-          gstate{player = player{ammo = 10}, enemyPhase = 2, enemies = enemiesPhase2, score = sc + 50}
+          gstate{player = player{ammo = 10}, enemyPhase = 2, enemies = enemiesPhase2 (runnerS s) (shooterS s), score = sc + 50} 
       | enemPhase == 2 && null enems =
-          gstate{player = player{ammo = 10}, enemyPhase = 3, enemies = enemiesPhase3, score = sc + 70}
+          gstate{player = player{ammo = 10}, enemyPhase = 3, enemies = enemiesPhase3 (runnerS s) (shooterS s), score = sc + 70} 
       | enemPhase == 3 && null enems =
-          GameVictory {elapsedTime = 0, name = "", score = sc + 100, highScores = []}
+          GameVictory {elapsedTime = 0, name = "", score = sc + 100, highScores = [], sprites = s}
       | otherwise = gstate
 
 checkPhase _ gstate = gstate

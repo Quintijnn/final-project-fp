@@ -3,14 +3,29 @@ module Main where
 import Controller
 import Model
 import View
-
+import Assets
 import Graphics.Gloss.Interface.IO.Game
 
 main :: IO ()
-main = playIO (InWindow "Shoot 'm Up" (1200, 600) (300, 200)) -- Or FullScreen
-              black            -- Background color
-              30               -- Frames per second
-              initialState     -- Initial state
-              drawState        -- View function
-              handleInput      -- Event function
-              step             -- Step function
+main = do
+    playerS  <- playerSpriteAsset
+    runnerS  <- runnerSpriteAsset
+    shooterS <- shooterSpriteAsset
+    bulletS  <- bulletSpriteAsset
+
+    let allSprites = Sprites
+                    { playerS = playerS
+                    , runnerS = runnerS
+                    , shooterS = shooterS
+                    , bulletS = bulletS
+                    }
+    let startMS = startMenuState allSprites
+
+    playIO
+      (InWindow "Shoot 'm Up" (1200, 600) (300, 200))
+      black
+      30
+      startMS
+      drawState
+      handleInput
+      step

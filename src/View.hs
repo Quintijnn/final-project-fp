@@ -27,18 +27,19 @@ drawState GameVictory{score = sc} =
   return $ drawGameVictory sc
 
 drawPlayer :: Player -> Picture
-drawPlayer Player{position = (x, y)} =
-  translate x y (color white (circleSolid 25))
+drawPlayer p =
+  let (x, y) = position p
+  in translate x y (spritePic (playerSprite p))
 
 drawBullet :: Bullet -> Picture
-drawBullet Bullet{bulletPos = (x, y)} =
-  translate x y (color red (circleSolid 12)) 
+drawBullet b =
+  let (x, y) = bulletPos b
+  in translate x y (spritePic (bulletSprite b))
 
 drawEnemy :: Enemy -> Picture
-drawEnemy (Runner {enemyPos = (x, y)}) =
-  translate x y (color blue (circleSolid 20))
-drawEnemy (Shooter {enemyPos = (x, y)}) =
-  translate x y (color red (rectangleSolid 30 30))
+drawEnemy e =
+  let (x, y) = enemyPos e
+  in translate x y (spritePic (enemySprite e))
 
 
 drawRock :: Rock -> Picture
