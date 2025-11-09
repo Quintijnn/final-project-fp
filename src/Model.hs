@@ -106,8 +106,8 @@ enemiesPhase1 rS sS =
     Shooter {enemyPos = (600, -150), enemyDir = (-1, 2), shootInterval = 3, enemySprite = sS}
   ]
 
-enemiesPhase2 :: Sprite -> Sprite -> [Enemy]
-enemiesPhase2 rS sS =
+enemiesPhase3 :: Sprite -> Sprite -> [Enemy]
+enemiesPhase3 rS sS =
   [ Runner {enemyPos = (400, 100), enemyDir = (-1, 2), enemySprite = rS},
     Runner {enemyPos = (440, 80), enemyDir = (-1, 2), enemySprite = rS},
     Runner {enemyPos = (480, 60), enemyDir = (-1, 2), enemySprite = rS},
@@ -116,8 +116,8 @@ enemiesPhase2 rS sS =
     Shooter {enemyPos = (600, -150), enemyDir = (-1, 2), shootInterval = 3, enemySprite = sS}
   ]
 
-enemiesPhase3 :: Sprite -> Sprite -> [Enemy]
-enemiesPhase3 rS sS =
+enemiesPhase4 :: Sprite -> Sprite -> [Enemy]
+enemiesPhase4 rS sS =
   [ Runner {enemyPos = (400, 100), enemyDir = (-1, 2), enemySprite = rS},
     Runner {enemyPos = (440, 80), enemyDir = (-1, 2), enemySprite = rS},
     Runner {enemyPos = (480, 60), enemyDir = (-1, 2), enemySprite = rS},
